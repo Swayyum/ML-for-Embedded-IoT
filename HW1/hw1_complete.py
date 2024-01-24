@@ -118,7 +118,7 @@ Y = y_labels_one_hot
 # Create the TensorFlow/Keras model
 tf_model = tf.keras.models.Sequential([
     tf.keras.layers.Dense(10, activation='relu', input_shape=(4,)),  # First hidden layer with 10 neurons, and input shape 4 (for 4 features)
-    tf.keras.layers.Dense(10, activation='relu'),  # Another hidden layer with 10 neurons
+    tf.keras.layers.Dense(8, activation='relu'),  # Another hidden layer with 10 neurons
     tf.keras.layers.Dense(3, activation='softmax')  # Output layer with 3 neurons (one for each class), softmax activation
 ])
 
@@ -126,7 +126,7 @@ tf_model = tf.keras.models.Sequential([
 tf_model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
 # Train the model
-tf_model.fit(X, Y, epochs=100)  # You can adjust the number of epochs
+tf_model.fit(X, Y, epochs=200)  # You can adjust the number of epochs
 
 # Evaluate the model on the same dataset (since we don't have a separate test set)
 loss, accuracy = tf_model.evaluate(x_data, y_labels_one_hot)
