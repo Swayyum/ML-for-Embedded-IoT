@@ -2,21 +2,41 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import sklearn
+import tensorflow as tf
 
+from sklearn.preprocessing import OneHotEncoder
 from sklearn.datasets import load_iris
+from person import person
+
 rng = np.random.default_rng(2022)
-
-
-## Here's the information needed to do the first few tasks,
-# which will give you some practice with basic Python methods
-
 list_of_names = ['Roger', 'Mary', 'Luisa', 'Elvis']
 list_of_ages  = [23, 24, 19, 86]
 list_of_heights_cm = [175, 162, 178, 182]
+# List comprehension to create a list of lengths of the names
+name_lengths = [len(name) for name in list_of_names]
+
+# Create a dictionary of person objects
+people = {name: person(name, age, height) for name, age, height in zip(list_of_names, list_of_ages, list_of_heights_cm)}
 
 for name in list_of_names:
   print("The name {:} is {:} letters long".format(name, len(name)))
 
+# Convert lists of ages and heights into NumPy arrays
+ages_array = np.array(list_of_ages)
+heights_array = np.array(list_of_heights_cm)
+
+# Calculate the average age
+average_age = np.mean(ages_array)
+print("Average Age:", average_age)
+
+# Create a scatter plot of ages vs heights
+plt.figure(figsize=(8, 6))
+plt.scatter(ages_array, heights_array, color='blue', marker='o')
+plt.title('Scatter Plot of Ages vs Heights')
+plt.xlabel('Age')
+plt.ylabel('Height in cm')
+plt.grid(True)
+plt.savefig('ages_heights_plot.png')  # Save the plot as a PNG file
 
 ########################################
 # Here's the information for the second part, involving the linear
@@ -45,12 +65,14 @@ plt.tight_layout()
 # plt.show()
 plt.savefig('iris_data.png')
 
+def classify_iris(x):
+  # Initialize weights and biases
+  W = np.random.rand(3, 4)  # Replace with your chosen weights
+  b = np.random.rand(3)  # Replace with your chosen biases
 
-## A trivial example classifier.  You'll copy and modify this to 
-# perform a linear classification function.
-def classify_rand(x):    
-  return rng.integers(0,2, endpoint=True)
-
+  # Linear classification function
+  y = np.argmax(np.matmul(W, x) + b)
+  return y
 
 # A function to measure the accuracy of a classifier and
 # create a confusion matrix.  Keras and Scikit-learn have more sophisticated
@@ -83,4 +105,29 @@ def evaluate_classifier(cls_func, x_data, labels, print_confusion_matrix=True):
 
 ## Now evaluate the classifier we've built.  This will evaluate the
 # random classifier, which should have accuracy around 33%.
-acc, cm = evaluate_classifier(classify_rand, x_data.to_numpy(), y_labels.to_numpy())
+acc, cm = evaluate_classifier(classify_iris, x_data.to_numpy(), y_labels.to_numpy())
+
+
+encoder = OneHotEncoder(sparse=False)
+y_labels_one_hot = encoder.fit_transform(y_labels.to_numpy().reshape(-1, 1))
+
+# Split the data into features (X) and labels (Y)
+X = x_data.to_numpy()
+Y = y_labels_one_hot
+
+# Create the TensorFlow/Keras model
+tf_model = tf.keras.models.Sequential([
+    tf.keras.layers.Dense(10, activation='relu', input_shape=(4,)),  # First hidden layer with 10 neurons, and input shape 4 (for 4 features)
+    tf.keras.layers.Dense(10, activation='relu'),  # Another hidden layer with 10 neurons
+    tf.keras.layers.Dense(3, activation='softmax')  # Output layer with 3 neurons (one for each class), softmax activation
+])
+
+# Compile the model
+tf_model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Train the model
+tf_model.fit(X, Y, epochs=100)  # You can adjust the number of epochs
+
+# Evaluate the model on the same dataset (since we don't have a separate test set)
+loss, accuracy = tf_model.evaluate(x_data, y_labels_one_hot)
+print(f"Model accuracy: {accuracy*100:.2f}%")
