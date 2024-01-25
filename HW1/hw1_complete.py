@@ -6,6 +6,7 @@ import tensorflow as tf
 
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.datasets import load_iris
+from sklearn.linear_model import LogisticRegression
 from person import person
 
 rng = np.random.default_rng(2022)
@@ -65,10 +66,18 @@ plt.tight_layout()
 # plt.show()
 plt.savefig('iris_data.png')
 
+
+# Train a logistic regression model
+log_reg = LogisticRegression(multi_class='multinomial', solver='lbfgs')
+log_reg.fit(x_data, y_labels)
+
+# Use the trained model's coefficients and intercept
+W = log_reg.coef_
+b = log_reg.intercept_
 def classify_iris(x):
   # Initialize weights and biases
-  W = np.random.rand(3, 4)  # Replace with your chosen weights
-  b = np.random.rand(3)  # Replace with your chosen biases
+ # W = np.random.rand(3, 4)
+  #b = np.random.rand(3)
 
   # Linear classification function
   y = np.argmax(np.matmul(W, x) + b)
@@ -108,26 +117,33 @@ def evaluate_classifier(cls_func, x_data, labels, print_confusion_matrix=True):
 acc, cm = evaluate_classifier(classify_iris, x_data.to_numpy(), y_labels.to_numpy())
 
 
+iris_db = load_iris(as_frame=True)
+x_data = iris_db['data']
+y_labels = iris_db['target']
+
+# One-hot encode the labels
 encoder = OneHotEncoder(sparse=False)
 y_labels_one_hot = encoder.fit_transform(y_labels.to_numpy().reshape(-1, 1))
 
-# Split the data into features (X) and labels (Y)
+  # Split the data into features (X) and labels (Y)
 X = x_data.to_numpy()
 Y = y_labels_one_hot
 
-# Create the TensorFlow/Keras model
+  # Create the TensorFlow/Keras model
 tf_model = tf.keras.models.Sequential([
-    tf.keras.layers.Dense(10, activation='relu', input_shape=(4,)),  # First hidden layer with 10 neurons, and input shape 4 (for 4 features)
-    tf.keras.layers.Dense(10, activation='relu'),  # Another hidden layer with 10 neurons
-    tf.keras.layers.Dense(3, activation='softmax')  # Output layer with 3 neurons (one for each class), softmax activation
+  tf.keras.layers.Dense(10, activation='relu', input_shape=(4,)),  # First hidden layer with 10 neurons
+  tf.keras.layers.Dense(10, activation='relu'),  # Another hidden layer with 10 neurons
+  tf.keras.layers.Dense(3, activation='softmax')  # Output layer with 3 neurons (one for each class)
 ])
 
-# Compile the model
+  # Compile the model
 tf_model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
-# Train the model
+  # Train the model
 tf_model.fit(X, Y, epochs=100)  # You can adjust the number of epochs
 
-# Evaluate the model on the same dataset (since we don't have a separate test set)
-loss, accuracy = tf_model.evaluate(x_data, y_labels_one_hot)
-print(f"Model accuracy: {accuracy*100:.2f}%")
+  # Evaluate the model on the same dataset
+loss, accuracy = tf_model.evaluate(X, Y)
+print(f"Model accuracy: {accuracy * 100:.2f}%")
+
+
