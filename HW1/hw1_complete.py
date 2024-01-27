@@ -147,3 +147,6 @@ loss, accuracy = tf_model.evaluate(X, Y)
 print(f"Model accuracy: {accuracy * 100:.2f}%")
 
 
+np.argmax()
+argmax on once axis
+
