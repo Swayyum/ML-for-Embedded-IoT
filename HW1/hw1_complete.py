@@ -5,6 +5,7 @@ import sklearn
 import tensorflow as tf
 
 from sklearn.preprocessing import OneHotEncoder
+from sklearn.model_selection import train_test_split
 from sklearn.datasets import load_iris
 from sklearn.linear_model import LogisticRegression
 from person import person
@@ -59,7 +60,7 @@ for n, species in enumerate(target_names):
 plt.xlabel(iris_db['feature_names'][0])
 plt.ylabel(iris_db['feature_names'][1])
 plt.grid(True)
-plt.legend() # uses the 'label' argument passed to scatter()
+plt.legend()  # uses the 'label' argument passed to scatter()
 plt.tight_layout()
 # uncomment this line to show the figure, or use
 # interactive mode -- plt.ion() --  in iPython
@@ -117,36 +118,70 @@ def evaluate_classifier(cls_func, x_data, labels, print_confusion_matrix=True):
 acc, cm = evaluate_classifier(classify_iris, x_data.to_numpy(), y_labels.to_numpy())
 
 
-iris_db = load_iris(as_frame=True)
-x_data = iris_db['data']
-y_labels = iris_db['target']
+# iris_db = load_iris(as_frame=True)
+# x_data = iris_db['data']
+# y_labels = iris_db['target'].to_numpy()  # correct numeric labels
+#
+# # One-hot encode the labels
+# encoder = OneHotEncoder(sparse=False)
+# y_labels_one_hot = encoder.fit_transform(y_labels.reshape(-1, 1))
+#
+#   # Split the data into features (X) and labels (Y)
+# X = x_data.to_numpy()
+# Y = y_labels_one_hot
+#
+#   # Create the TensorFlow/Keras model
+# tf_model = tf.keras.models.Sequential([
+#   tf.keras.layers.Dense(10, activation='relu', input_shape=(4,)),  # First hidden layer with 10 neurons
+#   tf.keras.layers.Dense(10, activation='relu'),  # Another hidden layer with 10 neurons
+#   tf.keras.layers.Dense(3, activation='softmax')  # Output layer with 3 neurons (one for each class)
+# ])
+#
+#   # Compile the model
+# tf_model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+#
+#   # Train the model
+# tf_model.fit(X, Y, epochs=100)  # You can adjust the number of epochs
+#
+# #   # Evaluate the model on the same dataset
+# # loss, accuracy = tf_model.evaluate(X, Y)
+# # print(f"Model accuracy: {accuracy * 100:.2f}%")
+#
+# predictions = tf_model.predict(x_data)
+#
+# # Convert the probabilities to class labels
+# predicted_labels = np.argmax(predictions, axis=1)
+#
+# # Compare predicted labels with actual labels
+# # Assuming y_labels are integer labels, not one-hot encoded
+# correct_predictions = np.sum(predicted_labels == y_labels)
+# accuracy = np.mean(predicted_labels == y_labels)
+# print(f"Model accuracy based on np.argmax: {accuracy * 100:.2f}%")
 
-# One-hot encode the labels
-encoder = OneHotEncoder(sparse=False)
-y_labels_one_hot = encoder.fit_transform(y_labels.to_numpy().reshape(-1, 1))
+iris_db = load_iris()
+X = iris_db.data
+y = iris_db.target
 
-  # Split the data into features (X) and labels (Y)
-X = x_data.to_numpy()
-Y = y_labels_one_hot
+# Split the dataset into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-  # Create the TensorFlow/Keras model
+# Create the TensorFlow/Keras model
 tf_model = tf.keras.models.Sequential([
-  tf.keras.layers.Dense(10, activation='relu', input_shape=(4,)),  # First hidden layer with 10 neurons
-  tf.keras.layers.Dense(10, activation='relu'),  # Another hidden layer with 10 neurons
-  tf.keras.layers.Dense(3, activation='softmax')  # Output layer with 3 neurons (one for each class)
+    tf.keras.layers.Dense(10, activation='relu', input_shape=(4,)),  # First hidden layer with 10 neurons
+    tf.keras.layers.Dense(10, activation='relu'),  # Second hidden layer with 10 neurons
+    tf.keras.layers.Dense(3, activation='softmax')  # Output layer with 3 neurons (one for each class)
 ])
 
-  # Compile the model
-tf_model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+# Compile the model with sparse categorical crossentropy
+tf_model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
 
-  # Train the model
-tf_model.fit(X, Y, epochs=100)  # You can adjust the number of epochs
+# Train the model
+tf_model.fit(X_train, y_train, epochs=100)
 
-  # Evaluate the model on the same dataset
-loss, accuracy = tf_model.evaluate(X, Y)
-print(f"Model accuracy: {accuracy * 100:.2f}%")
+# Evaluate the model
+loss, accuracy = tf_model.evaluate(X_test, y_test)
+print(f"Test accuracy: {accuracy * 100:.2f}%")
 
-
-np.argmax()
-argmax on once axis
 
