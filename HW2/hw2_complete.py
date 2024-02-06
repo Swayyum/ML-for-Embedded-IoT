@@ -1,7 +1,9 @@
 ### Add lines to import modules as needed
-import tensorflow as tf
+import os
+import pickle
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import Input, layers, Sequential
 from tensorflow.keras.models import Model
@@ -50,47 +52,55 @@ def build_model1():
                 metrics=['accuracy'])
   return model
 def build_model2():
-  model = model = Sequential([
-        # First Conv2D layer as specified
-        Conv2D(32, (3, 3), strides=(2, 2), padding='same', activation='relu', input_shape=(32, 32, 3)),
-        BatchNormalization(),
+    inputs = Input(shape=(32, 32, 3))
 
-        # Replacing subsequent Conv2D layers with depthwise separable convolutions
-        SeparableConv2D(64, (3, 3), strides=(2, 2), padding='same', activation='relu', use_bias=False),
-        BatchNormalization(),
+    x = Conv2D(32, (3, 3), strides=(2, 2), padding='same', activation='relu')(inputs)
+    x = BatchNormalization()(x)
 
-        SeparableConv2D(128, (3, 3), strides=(2, 2), padding='same', activation='relu', use_bias=False),
-        BatchNormalization(),
+    x = SeparableConv2D(64, (3, 3), strides=(2, 2), padding='same', activation='relu')(x)
+    x = BatchNormalization()(x)
 
-        SeparableConv2D(128, (3, 3), padding='same', activation='relu', use_bias=False),
-        BatchNormalization(),
+    x = SeparableConv2D(96, (3, 3), padding='same', activation='relu')(x)
+    x = BatchNormalization()(x)
 
-        SeparableConv2D(128, (3, 3), padding='same', activation='relu', use_bias=False),
-        BatchNormalization(),
+    x = SeparableConv2D(144, (3, 3), padding='same', activation='relu', use_bias=False)(x)  # Adjusted filter count
+    x = BatchNormalization()(x)
 
-        SeparableConv2D(128, (3, 3), padding='same', activation='relu', use_bias=False),
-        BatchNormalization(),
+    x = MaxPooling2D(pool_size=(4, 4), strides=(4, 4))(x)
+    x = Flatten()(x)
 
-        SeparableConv2D(128, (3, 3), padding='same', activation='relu', use_bias=False),
-        BatchNormalization(),
+    x = Dense(132, activation='relu')(x)  # Adjusted unit count
+    x = BatchNormalization()(x)
+    x = Dense(10, activation='softmax')(x)
 
-        MaxPooling2D(pool_size=(4, 4), strides=(4, 4)),
-
-        Flatten(),
-        Dense(128, activation='relu'),
-        BatchNormalization(),
-        Dense(10, activation='softmax')
-    ])
-
-  model.compile(optimizer=Adam(),
-                  loss='sparse_categorical_crossentropy',
-                  metrics=['accuracy'])
-  return model
+    model = Model(inputs=inputs, outputs=x)
+    model.compile(optimizer=Adam(), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    return model
 
 def build_model3():
-  model = None # Add code to define model 1.
-  ## This one should use the functional API so you can create the residual connections
-  return model
+    inputs = Input(shape=(32, 32, 3))
+    x = Conv2D(32, (3, 3), strides=(2, 2), padding='same', activation='relu')(inputs)
+    x = BatchNormalization()(x)
+
+    # Assuming similar structure as provided before reaching the problematic MaxPooling2D
+
+    # Before applying MaxPooling, check the shape
+    shape_before_pooling = x.shape[1]
+    if shape_before_pooling > 4:
+        x = MaxPooling2D(pool_size=(4, 4), strides=(4, 4))(x)
+    else:
+        # Consider applying a different operation or skipping pooling
+        pass
+
+    x = Flatten()(x)
+    x = Dense(128, activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Dense(10, activation='softmax')(x)
+    model = Model(inputs=inputs, outputs=x)
+    model.compile(optimizer=Adam(),
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['accuracy'])
+    return model
 
 def build_model50k():
   model = None # Add code to define model 1.
@@ -102,18 +112,32 @@ if __name__ == '__main__':
 
   ########################################
   ## Add code here to Load the CIFAR10 data set
-  (train_images, train_labels), (test_images, test_labels) = cifar10.load_data()
+  def load_cifar10_data(file):
+      with open(file, 'rb') as fo:
+          cifar_dict = pickle.load(fo, encoding='bytes')
+      return cifar_dict[b'data'], cifar_dict[b'labels']
 
-  # Normalize pixel values to be between 0 and 1
-  train_images, test_images = train_images.astype('float32') / 255.0, test_images.astype('float32') / 255.0
 
-  # No need to convert labels to one-hot encoding
-  # train_labels, test_labels remain unchanged
+  # Assuming you've extracted the CIFAR-10 dataset to 'cifar-10-batches-py' directory
+  cifar10_dir =  r'C:\Users\X390 Yoga\Desktop\Swayam\Intro to ML\cifar-10-python\cifar-10-batches-py'
+  training_files = [os.path.join(cifar10_dir, 'data_batch_{}'.format(i)) for i in range(1, 6)]
+  test_file = os.path.join(cifar10_dir, 'test_batch')
 
-  # Split the training set into training and validation sets
-  val_split = int(len(train_images) * 0.8)
-  val_images, val_labels = train_images[val_split:], train_labels[val_split:]
-  train_images, train_labels = train_images[:val_split], train_labels[:val_split]
+  train_images, train_labels = [], []
+  for file in training_files:
+      data, labels = load_cifar10_data(file)
+      train_images.append(data)
+      train_labels += labels
+
+  train_images = np.concatenate(train_images, axis=0).reshape(-1, 3, 32, 32).transpose(0, 2, 3, 1)
+  train_labels = np.array(train_labels)
+
+  test_data, test_labels = load_cifar10_data(test_file)
+  test_images = test_data.reshape(-1, 3, 32, 32).transpose(0, 2, 3, 1)
+  test_labels = np.array(test_labels)
+
+  # Normalize pixel values
+  train_images, test_images = train_images / 255.0, test_images / 255.0
 
   ########################################
   ## Build and train model 1
@@ -124,7 +148,7 @@ if __name__ == '__main__':
                  loss='sparse_categorical_crossentropy',
                  metrics=['accuracy'])
 
-  history = model1.fit(train_images, train_labels, epochs=50, validation_data=(val_images, val_labels))
+  history = model1.fit(train_images, train_labels, epochs=50, validation_data=(test_images, test_labels))
 
   # Evaluate the model on the test set
   test_loss, test_accuracy = model1.evaluate(test_images, test_labels)
@@ -168,7 +192,10 @@ if __name__ == '__main__':
   print(f"Predicted class: {predicted_class_name}")
   ## Build, compile, and train model 2 (DS Convolutions)
   model2 = build_model2()
-
+  model.compile(optimizer=Adam(),
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['accuracy'])
+  model2.summary()
   
   ### Repeat for model 3 and your best sub-50k params model
   
