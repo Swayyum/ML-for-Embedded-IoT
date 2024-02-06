@@ -10,13 +10,19 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.datasets import cifar10
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
-
+from tensorflow.keras.layers import SeparableConv2D
 ##
-print("Num GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
-if tf.config.list_physical_devices('GPU'):
-    print("TensorFlow will run on GPU.")
-else:
-    print("TensorFlow could not find a GPU. It will run on CPU instead.")
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+  try:
+    # Currently, memory growth needs to be the same across GPUs
+    for gpu in gpus:
+      tf.config.experimental.set_memory_growth(gpu, True)
+    logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+    print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+  except RuntimeError as e:
+    # Memory growth must be set before GPUs have been initialized
+    print(e)
 def build_model1():
   model = Sequential([
     Conv2D(32, (3, 3), strides=(2, 2), padding='same', activation='relu', input_shape=(32, 32, 3)),
@@ -44,7 +50,41 @@ def build_model1():
                 metrics=['accuracy'])
   return model
 def build_model2():
-  model = None # Add code to define model 1.
+  model = model = Sequential([
+        # First Conv2D layer as specified
+        Conv2D(32, (3, 3), strides=(2, 2), padding='same', activation='relu', input_shape=(32, 32, 3)),
+        BatchNormalization(),
+
+        # Replacing subsequent Conv2D layers with depthwise separable convolutions
+        SeparableConv2D(64, (3, 3), strides=(2, 2), padding='same', activation='relu', use_bias=False),
+        BatchNormalization(),
+
+        SeparableConv2D(128, (3, 3), strides=(2, 2), padding='same', activation='relu', use_bias=False),
+        BatchNormalization(),
+
+        SeparableConv2D(128, (3, 3), padding='same', activation='relu', use_bias=False),
+        BatchNormalization(),
+
+        SeparableConv2D(128, (3, 3), padding='same', activation='relu', use_bias=False),
+        BatchNormalization(),
+
+        SeparableConv2D(128, (3, 3), padding='same', activation='relu', use_bias=False),
+        BatchNormalization(),
+
+        SeparableConv2D(128, (3, 3), padding='same', activation='relu', use_bias=False),
+        BatchNormalization(),
+
+        MaxPooling2D(pool_size=(4, 4), strides=(4, 4)),
+
+        Flatten(),
+        Dense(128, activation='relu'),
+        BatchNormalization(),
+        Dense(10, activation='softmax')
+    ])
+
+  model.compile(optimizer=Adam(),
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['accuracy'])
   return model
 
 def build_model3():
