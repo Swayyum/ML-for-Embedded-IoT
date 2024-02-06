@@ -37,7 +37,7 @@ try:
 except:
   print("Failure loading best_model.h5")
 print("Model50k loaded")
-model3.summary()
+#model3.summary()
 
   
 def count_layers(model, layer_type):
