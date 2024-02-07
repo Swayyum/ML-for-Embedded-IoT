@@ -203,7 +203,7 @@ if __name__ == '__main__':
                  metrics=['accuracy'])
 
   history = model1.fit(train_images, train_labels, epochs=50, validation_data=(test_images, test_labels))
-
+  plot_accuracy(history, title='Model 1 Accuracy')
   # Evaluate the model on the test set
   test_loss, test_accuracy = model1.evaluate(test_images, test_labels)
 
@@ -239,7 +239,7 @@ if __name__ == '__main__':
   print(f"Predicted class: {predicted_class}")
   ## Build, compile, and train model 2 (DS Convolutions)
   model2 = build_model2()
-  model.compile(optimizer=Adam(),
+  model2.compile(optimizer=Adam(),
                   loss='sparse_categorical_crossentropy',
                   metrics=['accuracy'])
   history2 = model2.fit(train_images, train_labels, epochs=50, validation_data=(test_images, test_labels))
