@@ -80,59 +80,56 @@ def build_model2():
 def build_model3():
     inputs = Input(shape=(32, 32, 3))
 
-    # Initial Convolutional Layer
-    x = Conv2D(32, (3, 3), padding='same', activation='relu')(inputs)
+    # Adjusting initial Convolutional Layer
+    x = Conv2D(64, (3, 3), padding='same', activation='relu')(inputs)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
 
-    # Block 1 - First Skip Connection Setup
+    # First Block with adjusted filters and Skip Connection
     shortcut = x
-    x = Conv2D(32, (3, 3), padding='same', activation='relu')(x)
-    x = BatchNormalization()(x)
-    x = Activation('relu')(x)
-    x = Dropout(0.3)(x)
-
-    # Completing Block 1 with Skip Connection
-    x = Conv2D(32, (3, 3), padding='same', activation='relu')(x)
-    x = BatchNormalization()(x)
-    x = Activation('relu')(x)
-    shortcut = Conv2D(32, (1, 1), padding='same', activation='relu')(
-        shortcut)  # Adjust shortcut dimensions if necessary
-    x = Add()([x, shortcut])  # 1st Skip Connection
-
-    # Block 2 - Second Skip Connection Setup
-    shortcut = x
-    x = Conv2D(64, (3, 3), padding='same', activation='relu', strides=(2, 2))(x)  # Reduce dimensions
-    x = BatchNormalization()(x)
-    x = Activation('relu')(x)
-    x = Dropout(0.3)(x)
-
-    # Completing Block 2 with Skip Connection
     x = Conv2D(64, (3, 3), padding='same', activation='relu')(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
-    shortcut = Conv2D(64, (1, 1), padding='same', activation='relu', strides=(2, 2))(shortcut)  # Adjust for stride
-    x = Add()([x, shortcut])  # 2nd Skip Connection
+    x = Dropout(0.3)(x)
 
-    # Block 3 - Third Skip Connection Setup
+    x = Conv2D(64, (3, 3), padding='same', activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    shortcut = Conv2D(64, (1, 1), padding='same', activation='relu')(shortcut)  # Ensure matching dimensions
+    x = Add()([x, shortcut])  # First skip connection
+
+    # Second Block with increased filters and Skip Connection
     shortcut = x
-    x = Conv2D(128, (3, 3), padding='same', activation='relu', strides=(2, 2))(x)  # Further reduce dimensions
+    x = Conv2D(128, (3, 3), padding='same', activation='relu', strides=(2, 2))(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     x = Dropout(0.3)(x)
 
-    # Completing Block 3 with Skip Connection
+    x = Conv2D(128, (2, 2), padding='same', activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    shortcut = Conv2D(128, (1, 1), padding='same', activation='relu', strides=(2, 2))(shortcut)  # Adjust for stride
+    x = Add()([x, shortcut])  # Second skip connection
+
+    # Third Block with further increased filters and Skip Connection
+    shortcut = x
+    x = Conv2D(128, (4, 4), padding='same', activation='relu', strides=(2, 2))(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = Dropout(0.3)(x)
+
     x = Conv2D(128, (3, 3), padding='same', activation='relu')(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     shortcut = Conv2D(128, (1, 1), padding='same', activation='relu', strides=(2, 2))(shortcut)  # Adjust for stride
-    x = Add()([x, shortcut])  # 3rd Skip Connection
+    x = Add()([x, shortcut])  # Third skip connection
 
-    # Global Average Pooling and Output Layer
+    # Global Average Pooling and an increased units Dense Layer before Output
     x = GlobalAveragePooling2D()(x)
+    x = Dense(512, activation='relu')(x)  # Increased units
     outputs = Dense(10, activation='softmax')(x)
 
-    model = Model(inputs=inputs, outputs=outputs, name='model3_with_3_skips')
+    model = Model(inputs=inputs, outputs=outputs, name='adjusted_model3')
     model.compile(optimizer=Adam(), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
     return model
