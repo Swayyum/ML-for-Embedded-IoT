@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import Input, layers, Sequential
-from tensorflow.keras.models import Model
+from tensorflow.keras.models import load_model, Model
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, BatchNormalization, Activation, Add, AveragePooling2D, Dropout, GlobalAveragePooling2D, ReLU
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.datasets import cifar10
@@ -172,8 +172,8 @@ if __name__ == '__main__':
 
 
   # Assuming you've extracted the CIFAR-10 dataset to 'cifar-10-batches-py' directory
-  #cifar10_dir =  r'C:\Users\X390 Yoga\Desktop\Swayam\Intro to ML\cifar-10-python\cifar-10-batches-py'
-  cifar10_dir = r'C:\Users\SirM\Desktop\Swayam\Intro to ML\cifar-10-batches-py'
+  cifar10_dir =  r'C:\Users\X390 Yoga\Desktop\Swayam\Intro to ML\cifar-10-python\cifar-10-batches-py'
+  #cifar10_dir = r'C:\Users\SirM\Desktop\Swayam\Intro to ML\cifar-10-batches-py'
   training_files = [os.path.join(cifar10_dir, 'data_batch_{}'.format(i)) for i in range(1, 6)]
   test_file = os.path.join(cifar10_dir, 'test_batch')
 
@@ -207,53 +207,52 @@ if __name__ == '__main__':
   # Evaluate the model on the test set
   test_loss, test_accuracy = model1.evaluate(test_images, test_labels)
 
-  # Plot training & validation accuracy values
-  epochs_range = range(1, 51)
-  plt.plot(epochs_range, history.history['accuracy'], label='Training Accuracy')
-  plt.plot(epochs_range, history.history['val_accuracy'], label='Validation Accuracy')
 
-  # Mark the test accuracy on the plot
-  plt.scatter(len(epochs_range), test_accuracy, label='Test Accuracy', color='red')
-
-  plt.title('Model Accuracy')
-  plt.ylabel('Accuracy')
-  plt.xlabel('Epoch')
-  plt.legend(loc='upper left')
-  plt.show()
+  def plot_accuracy(history, title='Model Accuracy'):
+      epochs_range = range(1, len(history.history['accuracy']) + 1)
+      plt.plot(epochs_range, history.history['accuracy'], label='Training Accuracy')
+      plt.plot(epochs_range, history.history['val_accuracy'], label='Validation Accuracy')
+      plt.scatter(len(epochs_range), history.history['val_accuracy'][-1], label='Last Validation Accuracy', color='red')
+      plt.title(title)
+      plt.ylabel('Accuracy')
+      plt.xlabel('Epoch')
+      plt.legend(loc='upper left')
+      plt.show()
   # compile and train model 1.
-  # Path to your test image
-  # image_path = 'test_image_cat.png'
-  #
-  # # Load the image with the target size of 32x32 pixels
-  # image = load_img(image_path, target_size=(32, 32))
-  #
-  # # Convert the image to a numpy array and normalize it
-  # image = img_to_array(image) / 255.0
-  #
-  # # Add a batch dimension
-  # image = np.expand_dims(image, axis=0)
-  # # Make a prediction
-  # predictions = model1.predict(image)
-  #
-  # # Get the index of the highest probability
-  # predicted_class_index = np.argmax(predictions, axis=1)
-  #
-  # # CIFAR-10 classes
-  # class_names = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
-  #
-  # # Print the predicted class
-  # predicted_class_name = class_names[predicted_class_index[0]]
-  # print(f"Predicted class: {predicted_class_name}")
+  model1.summary()
+  image_path = r"C:/Users/X390 Yoga/Desktop/test_image_classname.ext.png"
+  image = load_img(image_path, target_size=(32, 32))
+
+  # Convert the image to a numpy array
+  image = img_to_array(image)
+
+  # Scale the image pixels by dividing by 255
+  image = image / 255.0
+
+  # Add a new axis to make the image array batch-like
+  image = np.expand_dims(image, axis=0)
+  prediction = model1.predict(image)
+
+  # Decode the prediction
+  class_names = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
+  predicted_class = class_names[np.argmax(prediction)]
+  print(f"Predicted class: {predicted_class}")
   ## Build, compile, and train model 2 (DS Convolutions)
   model2 = build_model2()
   model.compile(optimizer=Adam(),
                   loss='sparse_categorical_crossentropy',
                   metrics=['accuracy'])
+  history2 = model2.fit(train_images, train_labels, epochs=50, validation_data=(test_images, test_labels))
+  plot_accuracy(history2, title='Model 2 Accuracy')
   model2.summary()
   
   ### Repeat for model 3 and your best sub-50k params model
   model50k = build_model50k()
+  history50k = model50k.fit(train_images, train_labels, epochs=50, validation_data=(test_images, test_labels))
+  plot_accuracy(history50k, title='Sub-50k Model Accuracy')
   model50k.summary()
 
   model3 = build_model3()
+  history3 = model3.fit(train_images, train_labels, epochs=50, validation_data=(test_images, test_labels))
+  plot_accuracy(history3, title='Model 3 Accuracy')
   model3.summary()
