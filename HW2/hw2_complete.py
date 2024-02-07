@@ -7,7 +7,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import Input, layers, Sequential
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, BatchNormalization, Activation, Add, AveragePooling2D, Dropout
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, BatchNormalization, Activation, Add, AveragePooling2D, Dropout, GlobalAveragePooling2D, ReLU
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.datasets import cifar10
 from tensorflow.keras.utils import to_categorical
@@ -79,32 +79,88 @@ def build_model2():
 
 def build_model3():
     inputs = Input(shape=(32, 32, 3))
-    x = Conv2D(32, (3, 3), strides=(2, 2), padding='same', activation='relu')(inputs)
+
+    # Initial Convolutional Layer
+    x = Conv2D(32, (3, 3), padding='same', activation='relu')(inputs)
     x = BatchNormalization()(x)
+    x = Activation('relu')(x)
 
-    # Assuming similar structure as provided before reaching the problematic MaxPooling2D
-
-    # Before applying MaxPooling, check the shape
-    shape_before_pooling = x.shape[1]
-    if shape_before_pooling > 4:
-        x = MaxPooling2D(pool_size=(4, 4), strides=(4, 4))(x)
-    else:
-        # Consider applying a different operation or skipping pooling
-        pass
-
-    x = Flatten()(x)
-    x = Dense(128, activation='relu')(x)
+    # Block 1 - First Skip Connection Setup
+    shortcut = x
+    x = Conv2D(32, (3, 3), padding='same', activation='relu')(x)
     x = BatchNormalization()(x)
-    x = Dense(10, activation='softmax')(x)
-    model = Model(inputs=inputs, outputs=x)
-    model.compile(optimizer=Adam(),
-                  loss='sparse_categorical_crossentropy',
-                  metrics=['accuracy'])
+    x = Activation('relu')(x)
+    x = Dropout(0.3)(x)
+
+    # Completing Block 1 with Skip Connection
+    x = Conv2D(32, (3, 3), padding='same', activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    shortcut = Conv2D(32, (1, 1), padding='same', activation='relu')(
+        shortcut)  # Adjust shortcut dimensions if necessary
+    x = Add()([x, shortcut])  # 1st Skip Connection
+
+    # Block 2 - Second Skip Connection Setup
+    shortcut = x
+    x = Conv2D(64, (3, 3), padding='same', activation='relu', strides=(2, 2))(x)  # Reduce dimensions
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = Dropout(0.3)(x)
+
+    # Completing Block 2 with Skip Connection
+    x = Conv2D(64, (3, 3), padding='same', activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    shortcut = Conv2D(64, (1, 1), padding='same', activation='relu', strides=(2, 2))(shortcut)  # Adjust for stride
+    x = Add()([x, shortcut])  # 2nd Skip Connection
+
+    # Block 3 - Third Skip Connection Setup
+    shortcut = x
+    x = Conv2D(128, (3, 3), padding='same', activation='relu', strides=(2, 2))(x)  # Further reduce dimensions
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = Dropout(0.3)(x)
+
+    # Completing Block 3 with Skip Connection
+    x = Conv2D(128, (3, 3), padding='same', activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    shortcut = Conv2D(128, (1, 1), padding='same', activation='relu', strides=(2, 2))(shortcut)  # Adjust for stride
+    x = Add()([x, shortcut])  # 3rd Skip Connection
+
+    # Global Average Pooling and Output Layer
+    x = GlobalAveragePooling2D()(x)
+    outputs = Dense(10, activation='softmax')(x)
+
+    model = Model(inputs=inputs, outputs=outputs, name='model3_with_3_skips')
+    model.compile(optimizer=Adam(), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
     return model
 
 def build_model50k():
-  model = None # Add code to define model 1.
-  # Train the model
+  model = Sequential([
+        Conv2D(16, (3, 3), padding='same', input_shape=(32, 32, 3)),
+        BatchNormalization(),
+        Activation('relu'),
+        MaxPooling2D(pool_size=(2, 2)),
+
+        Conv2D(32, (3, 3), padding='same'),
+        BatchNormalization(),
+        Activation('relu'),
+        MaxPooling2D(pool_size=(2, 2)),
+
+        Conv2D(64, (3, 3), padding='same'),
+        BatchNormalization(),
+        Activation('relu'),
+        GlobalAveragePooling2D(),
+
+        Dense(120, activation='relu'),
+        Dense(10, activation='softmax')
+    ])
+
+  model.compile(optimizer='adam',
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['accuracy'])
   return model
 
 # no training or dataset construction should happen above this line
@@ -119,7 +175,8 @@ if __name__ == '__main__':
 
 
   # Assuming you've extracted the CIFAR-10 dataset to 'cifar-10-batches-py' directory
-  cifar10_dir =  r'C:\Users\X390 Yoga\Desktop\Swayam\Intro to ML\cifar-10-python\cifar-10-batches-py'
+  #cifar10_dir =  r'C:\Users\X390 Yoga\Desktop\Swayam\Intro to ML\cifar-10-python\cifar-10-batches-py'
+  cifar10_dir = r'C:\Users\SirM\Desktop\Swayam\Intro to ML\cifar-10-batches-py'
   training_files = [os.path.join(cifar10_dir, 'data_batch_{}'.format(i)) for i in range(1, 6)]
   test_file = os.path.join(cifar10_dir, 'test_batch')
 
@@ -168,28 +225,28 @@ if __name__ == '__main__':
   plt.show()
   # compile and train model 1.
   # Path to your test image
-  image_path = 'test_image_cat.png'
-
-  # Load the image with the target size of 32x32 pixels
-  image = load_img(image_path, target_size=(32, 32))
-
-  # Convert the image to a numpy array and normalize it
-  image = img_to_array(image) / 255.0
-
-  # Add a batch dimension
-  image = np.expand_dims(image, axis=0)
-  # Make a prediction
-  predictions = model1.predict(image)
-
-  # Get the index of the highest probability
-  predicted_class_index = np.argmax(predictions, axis=1)
-
-  # CIFAR-10 classes
-  class_names = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
-
-  # Print the predicted class
-  predicted_class_name = class_names[predicted_class_index[0]]
-  print(f"Predicted class: {predicted_class_name}")
+  # image_path = 'test_image_cat.png'
+  #
+  # # Load the image with the target size of 32x32 pixels
+  # image = load_img(image_path, target_size=(32, 32))
+  #
+  # # Convert the image to a numpy array and normalize it
+  # image = img_to_array(image) / 255.0
+  #
+  # # Add a batch dimension
+  # image = np.expand_dims(image, axis=0)
+  # # Make a prediction
+  # predictions = model1.predict(image)
+  #
+  # # Get the index of the highest probability
+  # predicted_class_index = np.argmax(predictions, axis=1)
+  #
+  # # CIFAR-10 classes
+  # class_names = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
+  #
+  # # Print the predicted class
+  # predicted_class_name = class_names[predicted_class_index[0]]
+  # print(f"Predicted class: {predicted_class_name}")
   ## Build, compile, and train model 2 (DS Convolutions)
   model2 = build_model2()
   model.compile(optimizer=Adam(),
@@ -198,5 +255,8 @@ if __name__ == '__main__':
   model2.summary()
   
   ### Repeat for model 3 and your best sub-50k params model
-  
-  
+  model50k = build_model50k()
+  model50k.summary()
+
+  model3 = build_model3()
+  model3.summary()

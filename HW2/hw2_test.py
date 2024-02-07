@@ -20,35 +20,36 @@ import hw2_complete as hw
 model1 = hw.build_model1()
 model2 = hw.build_model2()
 model3 = hw.build_model3()
+model50k = hw.build_model50k()
 
 
 
 # Load CIFAR 10 dataset
-# (train_images, train_labels), (test_images, test_labels) = \
-#   tf.keras.datasets.cifar10.load_data()
-#
-# train_labels = train_labels.squeeze()
-# test_labels = test_labels.squeeze()
-#
-# train_images = train_images / 255.0
-# test_images  = test_images  / 255.0
-def load_cifar10_data(file):
-  with open(file, 'rb') as fo:
-    cifar_dict = pickle.load(fo, encoding='bytes')
-  return cifar_dict[b'data'], cifar_dict[b'labels']
+(train_images, train_labels), (test_images, test_labels) = \
+  tf.keras.datasets.cifar10.load_data()
 
+train_labels = train_labels.squeeze()
+test_labels = test_labels.squeeze()
 
-# Assuming you've extracted the CIFAR-10 dataset to 'cifar-10-batches-py' directory
-cifar10_dir = r'C:\Users\X390 Yoga\Desktop\Swayam\Intro to ML\cifar-10-python\cifar-10-batches-py'
-training_files = [os.path.join(cifar10_dir, 'data_batch_{}'.format(i)) for i in range(1, 6)]
-test_file = os.path.join(cifar10_dir, 'test_batch')
+train_images = train_images / 255.0
+test_images  = test_images  / 255.0
+# def load_cifar10_data(file):
+#   with open(file, 'rb') as fo:
+#     cifar_dict = pickle.load(fo, encoding='bytes')
+#   return cifar_dict[b'data'], cifar_dict[b'labels']
+#
+#
+# # Assuming you've extracted the CIFAR-10 dataset to 'cifar-10-batches-py' directory
+# cifar10_dir = r'C:\Users\X390 Yoga\Desktop\Swayam\Intro to ML\cifar-10-python\cifar-10-batches-py'
+# training_files = [os.path.join(cifar10_dir, 'data_batch_{}'.format(i)) for i in range(1, 6)]
+# test_file = os.path.join(cifar10_dir, 'test_batch')
 
 try:
   model50k = tf.keras.models.load_model("best_model.h5")
 except:
   print("Failure loading best_model.h5")
 print("Model50k loaded")
-#model3.summary()
+model3.summary()
 
   
 def count_layers(model, layer_type):
