@@ -52,29 +52,27 @@ def build_model1():
                 metrics=['accuracy'])
   return model
 def build_model2():
-    inputs = Input(shape=(32, 32, 3))
-
-    x = Conv2D(32, (3, 3), strides=(2, 2), padding='same', activation='relu')(inputs)
-    x = BatchNormalization()(x)
-
-    x = SeparableConv2D(64, (3, 3), strides=(2, 2), padding='same', activation='relu')(x)
-    x = BatchNormalization()(x)
-
-    x = SeparableConv2D(96, (3, 3), padding='same', activation='relu')(x)
-    x = BatchNormalization()(x)
-
-    x = SeparableConv2D(144, (3, 3), padding='same', activation='relu', use_bias=False)(x)  # Adjusted filter count
-    x = BatchNormalization()(x)
-
-    x = MaxPooling2D(pool_size=(4, 4), strides=(4, 4))(x)
-    x = Flatten()(x)
-
-    x = Dense(132, activation='relu')(x)  # Adjusted unit count
-    x = BatchNormalization()(x)
-    x = Dense(10, activation='softmax')(x)
-
-    model = Model(inputs=inputs, outputs=x)
-    model.compile(optimizer=Adam(), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    model = Sequential([
+        Conv2D(32, kernel_size=(3, 3), strides=(2, 2), padding='same', activation='relu', input_shape=(32, 32, 3)),
+        BatchNormalization(),
+        SeparableConv2D(64, kernel_size=(3, 3), strides=(2, 2), padding='same', activation='relu'),
+        BatchNormalization(),
+        SeparableConv2D(128, kernel_size=(3, 3), strides=(2, 2), padding='same', activation='relu'),
+        BatchNormalization(),
+        SeparableConv2D(128, kernel_size=(3, 3), padding='same', activation='relu'),
+        BatchNormalization(),
+        SeparableConv2D(128, kernel_size=(3, 3), padding='same', activation='relu'),
+        BatchNormalization(),
+        SeparableConv2D(128, kernel_size=(3, 3), padding='same', activation='relu'),
+        BatchNormalization(),
+        SeparableConv2D(128, kernel_size=(3, 3), padding='same', activation='relu'),
+        BatchNormalization(),
+        MaxPooling2D(pool_size=(4, 4), strides=(4, 4)),
+        Flatten(),
+        Dense(128, activation='relu'),
+        BatchNormalization(),
+        Dense(10, activation='softmax')
+    ])
     return model
 
 def build_model3():
@@ -126,7 +124,7 @@ def build_model3():
 
     # Global Average Pooling and an increased units Dense Layer before Output
     x = GlobalAveragePooling2D()(x)
-    x = Dense(512, activation='relu')(x)  # Increased units
+    x = Dense(460, activation='relu')(x)  # Increased units
     outputs = Dense(10, activation='softmax')(x)
 
     model = Model(inputs=inputs, outputs=outputs, name='adjusted_model3')
@@ -172,8 +170,8 @@ if __name__ == '__main__':
 
 
   # Assuming you've extracted the CIFAR-10 dataset to 'cifar-10-batches-py' directory
-  cifar10_dir =  r'C:\Users\X390 Yoga\Desktop\Swayam\Intro to ML\cifar-10-python\cifar-10-batches-py'
-  #cifar10_dir = r'C:\Users\SirM\Desktop\Swayam\Intro to ML\cifar-10-batches-py'
+  #cifar10_dir =  r'C:\Users\X390 Yoga\Desktop\Swayam\Intro to ML\cifar-10-python\cifar-10-batches-py'
+  cifar10_dir = r'C:\Users\SirM\Desktop\Swayam\Intro to ML\cifar-10-batches-py'
   training_files = [os.path.join(cifar10_dir, 'data_batch_{}'.format(i)) for i in range(1, 6)]
   test_file = os.path.join(cifar10_dir, 'test_batch')
 
@@ -192,22 +190,6 @@ if __name__ == '__main__':
 
   # Normalize pixel values
   train_images, test_images = train_images / 255.0, test_images / 255.0
-
-  ########################################
-  ## Build and train model 1
-  model1 = build_model1()
-
-  # Make sure to compile the model with 'sparse_categorical_crossentropy'
-  model1.compile(optimizer=Adam(),
-                 loss='sparse_categorical_crossentropy',
-                 metrics=['accuracy'])
-
-  history = model1.fit(train_images, train_labels, epochs=50, validation_data=(test_images, test_labels))
-  plot_accuracy(history, title='Model 1 Accuracy')
-  # Evaluate the model on the test set
-  test_loss, test_accuracy = model1.evaluate(test_images, test_labels)
-
-
   def plot_accuracy(history, title='Model Accuracy'):
       epochs_range = range(1, len(history.history['accuracy']) + 1)
       plt.plot(epochs_range, history.history['accuracy'], label='Training Accuracy')
@@ -218,6 +200,18 @@ if __name__ == '__main__':
       plt.xlabel('Epoch')
       plt.legend(loc='upper left')
       plt.show()
+  ########################################
+  ## Build and train model 1
+  model1 = build_model1()
+  # Make sure to compile the model with 'sparse_categorical_crossentropy'
+  model1.compile(optimizer=Adam(),
+                 loss='sparse_categorical_crossentropy',
+                 metrics=['accuracy'])
+
+  history = model1.fit(train_images, train_labels, epochs=50, validation_data=(test_images, test_labels))
+  plot_accuracy(history, title='Model 1 Accuracy')
+  # Evaluate the model on the test set
+  test_loss, test_accuracy = model1.evaluate(test_images, test_labels)
   # compile and train model 1.
   model1.summary()
   image_path = r"C:/Users/X390 Yoga/Desktop/test_image_classname.ext.png"
