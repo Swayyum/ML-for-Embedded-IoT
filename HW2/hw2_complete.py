@@ -124,7 +124,7 @@ def build_model3():
 
     # Global Average Pooling and an increased units Dense Layer before Output
     x = GlobalAveragePooling2D()(x)
-    x = Dense(460, activation='relu')(x)  # Increased units
+    x = Dense(370, activation='relu')(x)  # Increased units
     outputs = Dense(10, activation='softmax')(x)
 
     model = Model(inputs=inputs, outputs=outputs, name='adjusted_model3')
@@ -170,8 +170,8 @@ if __name__ == '__main__':
 
 
   # Assuming you've extracted the CIFAR-10 dataset to 'cifar-10-batches-py' directory
-  #cifar10_dir =  r'C:\Users\X390 Yoga\Desktop\Swayam\Intro to ML\cifar-10-python\cifar-10-batches-py'
-  cifar10_dir = r'C:\Users\SirM\Desktop\Swayam\Intro to ML\cifar-10-batches-py'
+  cifar10_dir =  r'C:\Users\X390 Yoga\Desktop\Swayam\Intro to ML\cifar-10-python\cifar-10-batches-py'
+  #cifar10_dir = r'C:\Users\SirM\Desktop\Swayam\Intro to ML\cifar-10-batches-py'
   training_files = [os.path.join(cifar10_dir, 'data_batch_{}'.format(i)) for i in range(1, 6)]
   test_file = os.path.join(cifar10_dir, 'test_batch')
 
