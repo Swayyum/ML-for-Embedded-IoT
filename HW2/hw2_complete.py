@@ -78,56 +78,43 @@ def build_model2():
 def build_model3():
     inputs = Input(shape=(32, 32, 3))
 
-    # Adjusting initial Convolutional Layer
-    x = Conv2D(64, (3, 3), padding='same', activation='relu')(inputs)
+    # First Convolutional Block
+    x = Conv2D(32, (3, 3), strides=(2, 2), padding='same')(inputs)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
+    x = Dropout(0.3)(x)  # Adding dropout after activation
 
-    # First Block with adjusted filters and Skip Connection
-    shortcut = x
-    x = Conv2D(64, (3, 3), padding='same', activation='relu')(x)
+    # Second Convolutional Block
+    x = Conv2D(64, (3, 3), strides=(2, 2), padding='same')(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
-    x = Dropout(0.3)(x)
+    x = Dropout(0.3)(x)  # Adding dropout after activation
 
-    x = Conv2D(64, (3, 3), padding='same', activation='relu')(x)
+    # Third Convolutional Block
+    x = Conv2D(128, (3, 3), strides=(2, 2), padding='same')(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
-    shortcut = Conv2D(64, (1, 1), padding='same', activation='relu')(shortcut)  # Ensure matching dimensions
-    x = Add()([x, shortcut])  # First skip connection
+    x = Dropout(0.3)(x)  # Adding dropout after activation
 
-    # Second Block with increased filters and Skip Connection
-    shortcut = x
-    x = Conv2D(128, (3, 3), padding='same', activation='relu', strides=(2, 2))(x)
+    # Additional Convolutional Blocks without striding
+    for _ in range(4):
+        x = Conv2D(128, (3, 3), padding='same')(x)
+        x = BatchNormalization()(x)
+        x = Activation('relu')(x)
+        x = Dropout(0.3)(x)  # Adding dropout after activation
+
+    # MaxPooling
+    x = MaxPooling2D(pool_size=(4, 4), strides=(4, 4))(x)
+
+    # Flatten and Dense Layers
+    x = Flatten()(x)
+    x = Dense(128, activation='relu')(x)
     x = BatchNormalization()(x)
-    x = Activation('relu')(x)
-    x = Dropout(0.3)(x)
-
-    x = Conv2D(128, (2, 2), padding='same', activation='relu')(x)
-    x = BatchNormalization()(x)
-    x = Activation('relu')(x)
-    shortcut = Conv2D(128, (1, 1), padding='same', activation='relu', strides=(2, 2))(shortcut)  # Adjust for stride
-    x = Add()([x, shortcut])  # Second skip connection
-
-    # Third Block with further increased filters and Skip Connection
-    shortcut = x
-    x = Conv2D(128, (4, 4), padding='same', activation='relu', strides=(2, 2))(x)
-    x = BatchNormalization()(x)
-    x = Activation('relu')(x)
-    x = Dropout(0.3)(x)
-
-    x = Conv2D(128, (3, 3), padding='same', activation='relu')(x)
-    x = BatchNormalization()(x)
-    x = Activation('relu')(x)
-    shortcut = Conv2D(128, (1, 1), padding='same', activation='relu', strides=(2, 2))(shortcut)  # Adjust for stride
-    x = Add()([x, shortcut])  # Third skip connection
-
-    # Global Average Pooling and an increased units Dense Layer before Output
-    x = GlobalAveragePooling2D()(x)
-    x = Dense(370, activation='relu')(x)  # Increased units
+    x = Dropout(0.5)(x)  # Adding dropout before the final dense layer
     outputs = Dense(10, activation='softmax')(x)
 
-    model = Model(inputs=inputs, outputs=outputs, name='adjusted_model3')
+    # Creating the model
+    model = Model(inputs=inputs, outputs=outputs, name='model3_without_shortcuts')
     model.compile(optimizer=Adam(), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
     return model
@@ -156,8 +143,8 @@ def build_model50k():
   model.compile(optimizer='adam',
                   loss='sparse_categorical_crossentropy',
                   metrics=['accuracy'])
-  return model
 
+  return model
 # no training or dataset construction should happen above this line
 if __name__ == '__main__':
 
@@ -202,51 +189,52 @@ if __name__ == '__main__':
       plt.show()
   ########################################
   ## Build and train model 1
-  model1 = build_model1()
-  # Make sure to compile the model with 'sparse_categorical_crossentropy'
-  model1.compile(optimizer=Adam(),
-                 loss='sparse_categorical_crossentropy',
-                 metrics=['accuracy'])
-
-  history = model1.fit(train_images, train_labels, epochs=50, validation_data=(test_images, test_labels))
-  plot_accuracy(history, title='Model 1 Accuracy')
-  # Evaluate the model on the test set
-  test_loss, test_accuracy = model1.evaluate(test_images, test_labels)
-  # compile and train model 1.
-  model1.summary()
-  image_path = r"C:/Users/X390 Yoga/Desktop/test_image_classname.ext.png"
-  image = load_img(image_path, target_size=(32, 32))
-
-  # Convert the image to a numpy array
-  image = img_to_array(image)
-
-  # Scale the image pixels by dividing by 255
-  image = image / 255.0
-
-  # Add a new axis to make the image array batch-like
-  image = np.expand_dims(image, axis=0)
-  prediction = model1.predict(image)
-
-  # Decode the prediction
-  class_names = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
-  predicted_class = class_names[np.argmax(prediction)]
-  print(f"Predicted class: {predicted_class}")
-  ## Build, compile, and train model 2 (DS Convolutions)
-  model2 = build_model2()
-  model2.compile(optimizer=Adam(),
-                  loss='sparse_categorical_crossentropy',
-                  metrics=['accuracy'])
-  history2 = model2.fit(train_images, train_labels, epochs=50, validation_data=(test_images, test_labels))
-  plot_accuracy(history2, title='Model 2 Accuracy')
-  model2.summary()
-  
+  # model1 = build_model1()
+  # # Make sure to compile the model with 'sparse_categorical_crossentropy'
+  # model1.compile(optimizer=Adam(),
+  #                loss='sparse_categorical_crossentropy',
+  #                metrics=['accuracy'])
+  #
+  # history = model1.fit(train_images, train_labels, epochs=50, validation_data=(test_images, test_labels))
+  # plot_accuracy(history, title='Model 1 Accuracy')
+  # # Evaluate the model on the test set
+  # test_loss, test_accuracy = model1.evaluate(test_images, test_labels)
+  # # compile and train model 1.
+  # model1.summary()
+  # image_path = r"C:/Users/X390 Yoga/Desktop/test_image_classname.ext.png"
+  # image = load_img(image_path, target_size=(32, 32))
+  #
+  # # Convert the image to a numpy array
+  # image = img_to_array(image)
+  #
+  # # Scale the image pixels by dividing by 255
+  # image = image / 255.0
+  #
+  # # Add a new axis to make the image array batch-like
+  # image = np.expand_dims(image, axis=0)
+  # prediction = model1.predict(image)
+  #
+  # # Decode the prediction
+  # class_names = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
+  # predicted_class = class_names[np.argmax(prediction)]
+  # print(f"Predicted class: {predicted_class}")
+  # ## Build, compile, and train model 2 (DS Convolutions)
+  # model2 = build_model2()
+  # model2.compile(optimizer=Adam(),
+  #                 loss='sparse_categorical_crossentropy',
+  #                 metrics=['accuracy'])
+  # history2 = model2.fit(train_images, train_labels, epochs=50, validation_data=(test_images, test_labels))
+  # plot_accuracy(history2, title='Model 2 Accuracy')
+  # model2.summary()
+  #
   ### Repeat for model 3 and your best sub-50k params model
   model50k = build_model50k()
   history50k = model50k.fit(train_images, train_labels, epochs=50, validation_data=(test_images, test_labels))
+  model50k.save("best_model.h5")
   plot_accuracy(history50k, title='Sub-50k Model Accuracy')
   model50k.summary()
 
-  model3 = build_model3()
-  history3 = model3.fit(train_images, train_labels, epochs=50, validation_data=(test_images, test_labels))
-  plot_accuracy(history3, title='Model 3 Accuracy')
-  model3.summary()
+  # model3 = build_model3()
+  # history3 = model3.fit(train_images, train_labels, epochs=50, validation_data=(test_images, test_labels))
+  # plot_accuracy(history3, title='Model 3 Accuracy')
+  # model3.summary()

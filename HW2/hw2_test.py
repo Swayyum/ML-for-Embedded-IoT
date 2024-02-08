@@ -15,7 +15,7 @@ import hw2_complete as hw
 model1 = hw.build_model1()
 model2 = hw.build_model2()
 model3 = hw.build_model3()
-model50k = hw.build_model50k()
+#model50k = hw.build_model50k()
 
 # # Load CIFAR 10 dataset
 # (train_images, train_labels), (test_images, test_labels) = \
