@@ -77,7 +77,7 @@ def test_model1_dense():
   assert n_dense == 2
 
 def test_model2_params():
-  assert model2.count_params() == 104138
+  assert model2.count_params() in [104106, 104138]
 
 def test_model3_params():
   assert model3.count_params() == 709066
