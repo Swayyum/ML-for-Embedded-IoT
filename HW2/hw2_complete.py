@@ -17,13 +17,11 @@ from tensorflow.keras.layers import SeparableConv2D
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
   try:
-    # Currently, memory growth needs to be the same across GPUs
     for gpu in gpus:
       tf.config.experimental.set_memory_growth(gpu, True)
     logical_gpus = tf.config.experimental.list_logical_devices('GPU')
     print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
   except RuntimeError as e:
-    # Memory growth must be set before GPUs have been initialized
     print(e)
 def build_model1():
   model = Sequential([
@@ -78,43 +76,52 @@ def build_model2():
 def build_model3():
     inputs = Input(shape=(32, 32, 3))
 
-    # First Convolutional Block
+    # First Convolutional Block with shortcut connection
     x = Conv2D(32, (3, 3), strides=(2, 2), padding='same')(inputs)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
     x = Dropout(0.3)(x)  # Adding dropout after activation
+    shortcut = Conv2D(32, (1, 1), strides=(2, 2), padding='same')(inputs)
+    shortcut = BatchNormalization()(shortcut)
+    x = Add()([x, shortcut])
 
-    # Second Convolutional Block
+    shortcut = x  # Save input for shortcut
     x = Conv2D(64, (3, 3), strides=(2, 2), padding='same')(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
-    x = Dropout(0.3)(x)  # Adding dropout after activation
+    x = Dropout(0.3)(x)
+    shortcut = Conv2D(64, (1, 1), strides=(2, 2), padding='same')(shortcut)
+    shortcut = BatchNormalization()(shortcut)
+    x = Add()([x, shortcut])
 
-    # Third Convolutional Block
+    shortcut = x  # Save input for shortcut
     x = Conv2D(128, (3, 3), strides=(2, 2), padding='same')(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
-    x = Dropout(0.3)(x)  # Adding dropout after activation
+    x = Dropout(0.3)(x)
+    shortcut = Conv2D(128, (1, 1), strides=(2, 2), padding='same')(shortcut)
+    shortcut = BatchNormalization()(shortcut)
 
-    # Additional Convolutional Blocks without striding
+    x = Add()([x, shortcut])  # Add shortcut connection
+
     for _ in range(4):
         x = Conv2D(128, (3, 3), padding='same')(x)
         x = BatchNormalization()(x)
         x = Activation('relu')(x)
-        x = Dropout(0.3)(x)  # Adding dropout after activation
+        x = Dropout(0.3)(x)
 
     # MaxPooling
     x = MaxPooling2D(pool_size=(4, 4), strides=(4, 4))(x)
 
-    # Flatten and Dense Layers
+    # Flatten and De
     x = Flatten()(x)
     x = Dense(128, activation='relu')(x)
     x = BatchNormalization()(x)
-    x = Dropout(0.5)(x)  # Adding dropout before the final dense layer
+    x = Dropout(0.5)(x)
     outputs = Dense(10, activation='softmax')(x)
 
     # Creating the model
-    model = Model(inputs=inputs, outputs=outputs, name='model3_without_shortcuts')
+    model = Model(inputs=inputs, outputs=outputs, name='model3_with_shortcuts')
     model.compile(optimizer=Adam(), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
     return model
@@ -201,20 +208,16 @@ if __name__ == '__main__':
   test_loss, test_accuracy = model1.evaluate(test_images, test_labels)
   # compile and train model 1.
   model1.summary()
-  image_path = r"C:/Users/X390 Yoga/Desktop/test_image_classname.ext.png"
+ # image_path = r"C:/Users/X390 Yoga/Desktop/test_image_classname.ext.png"
+  image_path = r'C:/Users/SirM/Desktop/test_image_classname.ext.png'
   image = load_img(image_path, target_size=(32, 32))
 
-  # Convert the image to a numpy array
   image = img_to_array(image)
 
-  # Scale the image pixels by dividing by 255
   image = image / 255.0
 
-  # Add a new axis to make the image array batch-like
   image = np.expand_dims(image, axis=0)
   prediction = model1.predict(image)
-
-  # Decode the prediction
   class_names = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
   predicted_class = class_names[np.argmax(prediction)]
   print(f"Predicted class: {predicted_class}")
