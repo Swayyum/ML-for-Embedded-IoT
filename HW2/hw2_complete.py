@@ -13,6 +13,8 @@ from tensorflow.keras.datasets import cifar10
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from tensorflow.keras.layers import SeparableConv2D
+from tensorflow.python.client import device_lib
+print(device_lib.list_local_devices())
 ##
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:

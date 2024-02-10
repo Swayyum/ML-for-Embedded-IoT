@@ -1,67 +1,114 @@
-# Constants for the CNN layers
-input_shape = (32, 32, 3)  # CIFAR-10 images are 32x32 pixels with 3 channels
-kernel_size = 3  # 3x3 kernel size
-strides_conv = [2, 2, 2]  # Strides for the first three conv layers
-filters = [32, 64, 128]  # Filters for the conv layers
-dense_units = [128, 10]  # Units in the dense layers
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Conv2D, BatchNormalization, Activation, Add, Dropout, MaxPooling2D, Flatten, \
+    Dense
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, BatchNormalization, Activation, MaxPooling2D, GlobalAveragePooling2D, Dense
 
-# Calculations
-layer_details = []
-output_shape = input_shape
 
-def calc_conv2d_params_and_macs(input_shape, num_filters, kernel_size, stride, padding):
-    # Output size calculation for "same" padding
-    output_height = (input_shape[0] - 1) // stride + 1
-    output_width = (input_shape[1] - 1) // stride + 1
-    output_shape = (output_height, output_width, num_filters)
+# Define the model
+def build_model3():
+    inputs = Input(shape=(32, 32, 3))
 
-    # Parameters calculation
-    num_params = (input_shape[2] * kernel_size * kernel_size + 1) * num_filters
+    # First Convolutional Block with shortcut connection
+    x = Conv2D(32, (3, 3), strides=(2, 2), padding='same')(inputs)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = Dropout(0.3)(x)  # Adding dropout after activation
+    shortcut = Conv2D(32, (1, 1), strides=(2, 2), padding='same')(inputs)
+    shortcut = BatchNormalization()(shortcut)
+    x = Add()([x, shortcut])
 
-    # MACs calculation
-    macs = output_height * output_width * num_filters * (input_shape[2] * kernel_size * kernel_size)
+    shortcut = x  # Save input for shortcut
+    x = Conv2D(64, (3, 3), strides=(2, 2), padding='same')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = Dropout(0.3)(x)
+    shortcut = Conv2D(64, (1, 1), strides=(2, 2), padding='same')(shortcut)
+    shortcut = BatchNormalization()(shortcut)
+    x = Add()([x, shortcut])
 
-    return num_params, macs, output_shape
+    shortcut = x  # Save input for shortcut
+    x = Conv2D(128, (3, 3), strides=(2, 2), padding='same')(x)
+    x = BatchNormalization()(x)
+    x = Activation('relu')(x)
+    x = Dropout(0.3)(x)
+    shortcut = Conv2D(128, (1, 1), strides=(2, 2), padding='same')(shortcut)
+    shortcut = BatchNormalization()(shortcut)
 
-# Calculate for Conv2D and BatchNorm layers
-for idx, num_filters in enumerate(filters):
-    stride = strides_conv[idx]
-    num_params, macs, output_shape = calc_conv2d_params_and_macs(output_shape, num_filters, kernel_size, stride, "same")
-    layer_details.append((f"Conv2D-{num_filters}", num_params, macs, output_shape))
+    x = Add()([x, shortcut])  # Add shortcut connection
 
-    # BatchNorm parameters and MACs (simplified)
-    batchnorm_params = 2 * num_filters  # scale and shift parameters
-    layer_details.append((f"BatchNorm-{num_filters}", batchnorm_params, 0, output_shape))  # MACs considered negligible
+    for _ in range(4):
+        x = Conv2D(128, (3, 3), padding='same')(x)
+        x = BatchNormalization()(x)
+        x = Activation('relu')(x)
+        x = Dropout(0.3)(x)
 
-# Example calculation for subsequent layers without stride
-subsequent_filters = 128
-for _ in range(4):  # Four more pairs of Conv2D+BatchNorm without stride
-    num_params, macs, output_shape = calc_conv2d_params_and_macs(output_shape, subsequent_filters, kernel_size, 1, "same")
-    layer_details.append((f"Conv2D-{subsequent_filters}", num_params, macs, output_shape))
-    batchnorm_params = 2 * subsequent_filters
-    layer_details.append((f"BatchNorm-{subsequent_filters}", batchnorm_params, 0, output_shape))
+    # MaxPooling
+    x = MaxPooling2D(pool_size=(4, 4), strides=(4, 4))(x)
 
-# MaxPooling, Flatten, and Dense Layers calculation placeholder
-# Placeholder for the output of the last convolutional layer before max pooling
-last_conv_output_shape = output_shape
+    # Flatten and De
+    x = Flatten()(x)
+    x = Dense(128, activation='relu')(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.5)(x)
+    outputs = Dense(10, activation='softmax')(x)
 
-# MaxPooling
-pool_size = 4
-stride_pool = 4
-output_height = (last_conv_output_shape[0] - 1) // stride_pool + 1
-output_width = (last_conv_output_shape[1] - 1) // stride_pool + 1
-output_shape = (output_height, output_width, last_conv_output_shape[2])
-layer_details.append((f"MaxPooling", 0, 0, output_shape))
+    # Creating the model
+    model = Model(inputs=inputs, outputs=outputs, name='model3_with_shortcuts')
+    model.compile(optimizer=Adam(), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-# Flatten
-flatten_size = output_shape[0] * output_shape[1] * output_shape[2]
-layer_details.append((f"Flatten", 0, 0, (flatten_size,)))
+    return model
 
-# Dense layer calculations
-for units in dense_units:
-    dense_params = (flatten_size if units == dense_units[0] else dense_units[0]) * units + units
-    dense_macs = dense_params - units  # Subtract bias terms for MAC calculation
-    layer_details.append((f"Dense-{units}", dense_params, dense_macs, (units,)))
-    flatten_size = units  # Update for the next layer if any
 
-layer_details
+model = build_model3()
+
+
+# Function to calculate the output size of each layer
+def get_output_size(model, layer_index):
+    # Use a temporary model to get the output shape of a specific layer
+    temp_model = Model(inputs=model.inputs, outputs=model.layers[layer_index].output)
+    return temp_model.output_shape[1:]
+
+
+# Function to calculate MACs (Multiply-Accumulate Operations) for each layer
+def calculate_macs(layer):
+
+    if 'Conv2D' in layer.__class__.__name__:
+        output_shape = layer.output_shape[1:]  # Exclude the batch size
+        kernel_size = layer.kernel_size
+        filters = layer.filters
+        macs_per_output_element = kernel_size[0] * kernel_size[1] * output_shape[-1]
+        total_macs = filters * macs_per_output_element * output_shape[0] * output_shape[1]
+        return total_macs
+
+    elif 'Dense' in layer.__class__.__name__:
+        units = layer.units
+        input_shape = layer.input_shape
+        total_macs = units * input_shape[1]
+        return total_macs
+    else:
+        return 0
+
+layers_summary = []
+for i, layer in enumerate(model.layers):
+    layer_type = layer.__class__.__name__
+    filters_units = getattr(layer, 'filters', getattr(layer, 'units', '-'))
+    parameters = layer.count_params()
+    macs = calculate_macs(layer)
+    output_size = get_output_size(model, i)
+
+    layer_summary = {
+        'Layer Type': layer_type,
+        'Filters/Units': filters_units,
+        'Parameters': parameters,
+        'MACs': macs,
+        'Output Size': output_size
+    }
+    layers_summary.append(layer_summary)
+
+# Print the layers summary
+for layer_info in layers_summary:
+    print(layer_info)
+
+
