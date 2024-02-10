@@ -35,8 +35,8 @@ def load_cifar10_data(file):
     # Assuming you've extracted the CIFAR-10 dataset to 'cifar-10-batches-py' directory
 
 
-#cifar10_dir = r'C:\Users\X390 Yoga\Desktop\Swayam\Intro to ML\cifar-10-python\cifar-10-batches-py'
-cifar10_dir = r'C:\Users\SirM\Desktop\Swayam\Intro to ML\cifar-10-batches-py'
+cifar10_dir = r'C:\Users\X390 Yoga\Desktop\Swayam\Intro to ML\cifar-10-python\cifar-10-batches-py'
+#cifar10_dir = r'C:\Users\SirM\Desktop\Swayam\Intro to ML\cifar-10-batches-py'
 training_files = [os.path.join(cifar10_dir, 'data_batch_{}'.format(i)) for i in range(1, 6)]
 test_file = os.path.join(cifar10_dir, 'test_batch')
 

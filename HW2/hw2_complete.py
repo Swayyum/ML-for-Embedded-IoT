@@ -82,12 +82,13 @@ def build_model3():
     x = Conv2D(32, (3, 3), strides=(2, 2), padding='same')(inputs)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
-    x = Dropout(0.3)(x)  # Adding dropout after activation
+    x = Dropout(0.3)(x)
     shortcut = Conv2D(32, (1, 1), strides=(2, 2), padding='same')(inputs)
     shortcut = BatchNormalization()(shortcut)
     x = Add()([x, shortcut])
 
-    shortcut = x  # Save input for shortcut
+    # Second Convolutional Block
+    shortcut = x
     x = Conv2D(64, (3, 3), strides=(2, 2), padding='same')(x)
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
@@ -96,18 +97,19 @@ def build_model3():
     shortcut = BatchNormalization()(shortcut)
     x = Add()([x, shortcut])
 
-    shortcut = x  # Save input for shortcut
-    x = Conv2D(128, (3, 3), strides=(2, 2), padding='same')(x)
+    # Third Convolutional Block
+    shortcut = x
+    x = Conv2D(128, (3, 3), strides=(2, 2), padding='same')(x)  # Restoring to higher filter count
     x = BatchNormalization()(x)
     x = Activation('relu')(x)
-    x = Dropout(0.3)(x)
+    x = Dropout(0.5)(x)
     shortcut = Conv2D(128, (1, 1), strides=(2, 2), padding='same')(shortcut)
     shortcut = BatchNormalization()(shortcut)
+    x = Add()([x, shortcut])
 
-    x = Add()([x, shortcut])  # Add shortcut connection
-
+    # Additional Convolutional Layers with increased filter counts
     for _ in range(4):
-        x = Conv2D(128, (3, 3), padding='same')(x)
+        x = Conv2D(128, (3, 3), padding='same')(x)  # Keeping higher filter count for additional layers
         x = BatchNormalization()(x)
         x = Activation('relu')(x)
         x = Dropout(0.3)(x)
@@ -115,9 +117,9 @@ def build_model3():
     # MaxPooling
     x = MaxPooling2D(pool_size=(4, 4), strides=(4, 4))(x)
 
-    # Flatten and De
+    # Adjusting Dense layer configuration
     x = Flatten()(x)
-    x = Dense(128, activation='relu')(x)
+    x = Dense(78, activation='relu')(x)  # Increasing the number of neurons
     x = BatchNormalization()(x)
     x = Dropout(0.5)(x)
     outputs = Dense(10, activation='softmax')(x)
