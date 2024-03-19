@@ -1,137 +1,112 @@
 #include <Arduino.h>
 #include <TensorFlowLite.h>
 #include <sin.h>
+
+#include <wire.h>
+#include "tensorflow/lite/micro/all_ops_resolver.h"
+#include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 #include "tensorflow/lite/micro/micro_error_reporter.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
-#include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "tensorflow/lite/version.h"
-#include "model_quantized_data.cc"
+#include "sin_predictor.cc.cpp"
 
+// Globals, used for compatibility with Arduino-style sketches.
+namespace {
+tflite::ErrorReporter* error_reporter = nullptr;
+const tflite::Model* model = nullptr;
+tflite::MicroInterpreter* interpreter = nullptr;
+TfLiteTensor* input = nullptr;
 
-#define INPUT_BUFFER_SIZE 64
-#define OUTPUT_BUFFER_SIZE 64
-#define INT_ARRAY_SIZE 8
+// In order to use optimized tensorflow lite kernels, a signed int8_t quantized
+// model is preferred over the legacy unsigned model format. This means that
+// throughout this project, input images must be converted from unisgned to
+// signed format. The easiest and quickest way to convert from unsigned to
+// signed 8-bit integers is to subtract 128 from the unsigned value to get a
+// signed value.
 
-// put function declarations here:
-int string_to_array(char *in_str, int *int_array);
-void print_int_array(int *int_array, int array_len);
-int sum_array(int *int_array, int array_len);
+// An area of memory to use for input, output, and intermediate arrays.
+constexpr int kTensorArenaSize = 136 * 1024;
+static uint8_t tensor_arena[kTensorArenaSize];
+}  // namespace
 
+ // Set up logging. Google style is to avoid globals or statics because of
+  // lifetime uncertainty, but since this has a trivial destructor it's okay.
+  // NOLINTNEXTLINE(runtime-global-variables)
+  static tflite::MicroErrorReporter micro_error_reporter;
+  error_reporter = &micro_error_reporter;
 
-char received_char = (char)NULL;              
-int chars_avail = 0;                    // input present on terminal
-char out_str_buff[OUTPUT_BUFFER_SIZE];  // strings to print to terminal
-char in_str_buff[INPUT_BUFFER_SIZE];    // stores input from terminal
-int input_array[INT_ARRAY_SIZE];        // array of integers input by user
+  // Map the model into a usable data structure. This doesn't involve any
+  // copying or parsing, it's a very lightweight operation.
+  model = tflite::GetModel(g_person_detect_model_data);
+  if (model->version() != TFLITE_SCHEMA_VERSION) {
+    TF_LITE_REPORT_ERROR(error_reporter,
+                         "Model provided is schema version %d not equal "
+                         "to supported version %d.",
+                         model->version(), TFLITE_SCHEMA_VERSION);
+    return;
+  }
 
-int in_buff_idx=0; // tracks current input location in input buffer
-int array_length=0;
-int array_sum=0;
+  // Pull in only the operation implementations we need.
+  // This relies on a complete list of all the ops needed by this graph.
+  // An easier approach is to just use the AllOpsResolver, but this will
+  // incur some penalty in code space for op implementations that are not
+  // needed by this graph.
+  //
+  // tflite::AllOpsResolver resolver;
+  // NOLINTNEXTLINE(runtime-global-variables)
+  static tflite::MicroMutableOpResolver<6> micro_op_resolver;
+  micro_op_resolver.AddFullyConnected();
+  micro_op_resolver.AddRelu();
+  micro_op_resolver.AddAdd();
+  micro_op_resolver.AddMul();
+  micro_op_resolver.AddSub();
+  micro_op_resolver.AddMean();
 
-// Assuming model_quantized_data.cc contains the quantized TFLite model
-extern "C" { extern const unsigned char model_data[]; }
-extern "C" { extern const unsigned int model_data_len; }
+    // Build an interpreter to run the model with.
+  // NOLINTNEXTLINE(runtime-global-variables)
+  static tflite::MicroInterpreter static_interpreter(
+      model, micro_op_resolver, tensor_arena, kTensorArenaSize, error_reporter);
+  interpreter = &static_interpreter;
 
-// namespace {
-//   tflite::ErrorReporter* error_reporter;
-//   const tflite::Model* model;
-//   tflite::MicroInterpreter* interpreter;
-//   TfLiteTensor* model_input;
-//   TfLiteTensor* model_output;
-  
-//   // Define tensor arena size. Adjust according to the model's memory requirements.
-//   constexpr int kTensorArenaSize = 2 * 1024;  
-//   uint8_t tensor_arena[kTensorArenaSize];
-// }
+  // Allocate memory from the tensor_arena for the model's tensors.
+  TfLiteStatus allocate_status = interpreter->AllocateTensors();
+  if (allocate_status != kTfLiteOk) {
+    TF_LITE_REPORT_ERROR(error_reporter, "AllocateTensors() failed");
+    return;
+  }
 
-void setup() {
-  // put your setup code here, to run once:
-  delay(5000);
-  // Arduino does not have a stdout, so printf does not work easily
-  // So to print fixed messages (without variables), use 
-  // Serial.println() (appends new-line)  or Serial.print() (no added new-line)
-  Serial.println("Test Project waking up");
-  memset(in_str_buff, (char)0, INPUT_BUFFER_SIZE*sizeof(char)); 
+  // Get information about the memory area to use for the model's input.
+  input = interpreter->input(0);
 }
 
 void loop() {
-  // Check if characters are available on the terminal input
-  chars_avail = Serial.available();
   if (chars_avail > 0) {
-    received_char = Serial.read(); // Get the typed character
-    Serial.print(received_char);   // Echo to the terminal
+    received_char = Serial.read();
+    Serial.print(received_char);
 
-    // Check if Enter key was pressed
-    if (received_char == '\n' || received_char == '\r') {
-      // Process the input line if Enter is pressed
-      in_str_buff[in_buff_idx] = '\0'; // Null-terminate the string
-      array_length = string_to_array(in_str_buff, input_array);
+    in_str_buff[in_buff_idx++] = received_char;
+    
+if (received_char ==13) {
+  Serial.print("About to process line: ");
+  Serial.println(in_str_buff);
 
-      // Verify exactly 7 numbers were entered
-      if (array_length != 7) {
-        Serial.println("Warning: Please enter exactly 7 numbers.");
-      } else {
-        // Measure printing time
-        unsigned long t0 = micros();
-        Serial.println("Processing...");
-        unsigned long t1 = micros();
-
-        // Prepare model input
-        for (int i = 0; i < 7; i++) {
-          // Assuming model_input is a tensor expecting int8 data
-          model_input->data.int8[i] = input_array[i];
-        }
-
-        // Run model inference
-        TfLiteStatus invoke_status = interpreter->Invoke();
-        if (invoke_status == kTfLiteOk) {
-          // Assuming model output is a single int8 value
-          int8_t output_value = model_output->data.int8[0];
-          Serial.print("Model prediction: ");
-          Serial.println(static_cast<int>(output_value));
-        } else {
-          Serial.println("Error during model inference.");
-        }
-        unsigned long t2 = micros();
-
-        // Print execution times
-        Serial.print("Printing time = ");
-        Serial.print(t1 - t0);
-        Serial.println(" us.");
-        Serial.print("Inference time = ");
-        Serial.print(t2 - t1);
-        Serial.println(" us.");
-      }
-
-      // Reset buffer and index for next input
-      memset(in_str_buff, 0, INPUT_BUFFER_SIZE);
-      in_buff_idx = 0;
-    } else if (in_buff_idx < INPUT_BUFFER_SIZE - 1) {
-      // Add character to buffer if it's not Enter and buffer is not full
-      in_str_buff[in_buff_idx++] = received_char;
-    }
+  // Process and print out the array
+  array_length = string_to_array(in_str_buff, input_array);
+  if(array_length != 7) {
+    Serial.println("Error: Please enter exactly 7 numbers.");
+  } else {
+    for (int i = 0; i < array_length; i++) {
+      input->data.int8[i] = static_cast<int8>(input_arrau[i]);
+   }
+   // Run the model on this input and make sure it suceeds 
+  if (kTflite0k != interpreter->Invoke()) {
+    TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed.");
+  } else {
+    TfliteTensor* output = interpreter->output(0);
+    int8 prediction = output->data.int8[0];
+    Serial.print("Model prediction: ");
+    Serial.println(prediction);
   }
 }
-
-void print_int_array(int *int_array, int array_len) {
-  int curr_pos = 0; // track where in the output buffer we're writing
-
-  sprintf(out_str_buff, "Integers: [");
-  curr_pos = strlen(out_str_buff); // so the next write adds to the end
-  for(int i=0;i<array_len;i++) {
-    // sprintf returns number of char's written. use it to update current position
-    curr_pos += sprintf(out_str_buff+curr_pos, "%d, ", int_array[i]);
-  }
-  sprintf(out_str_buff+curr_pos, "]\r\n");
-  Serial.print(out_str_buff);
-}
-
-int sum_array(int *int_array, int array_len) {
-  int curr_sum = 0; // running sum of the array
-
-  for(int i=0;i<array_len;i++) {
-    curr_sum += int_array[i];
-  }
-  return curr_sum;
 }
